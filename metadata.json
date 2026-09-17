@@ -1,0 +1,6 @@
+{
+  "name": "YÊU TOÁN 6.vn",
+  "description": "Nền tảng học Toán lớp 6 trực quan với bài giảng video, bài tập trắc nghiệm, sơ đồ tư duy, góc trò chơi đấu trường toán học và gia sư AI 24/7.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

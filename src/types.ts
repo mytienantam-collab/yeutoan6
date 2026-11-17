@@ -143,3 +143,26 @@ export interface ChatMessage {
   topic?: string;
   isAudioPlaying?: boolean;
 }
+
+export interface StudentQuizRecord {
+  id: string;
+  topicId: string;
+  topicTitle: string;
+  date: string;
+  correct: number;
+  total: number;
+  accuracy: number;
+  xpEarned: number;
+}
+
+export interface StudentProfile {
+  id: string;
+  fullName: string;
+  className: string;
+  avatar: string;
+  createdAt: string;
+  lastActiveAt: string;
+  stats: UserStats;
+  quizHistory: StudentQuizRecord[];
+  badges: Badge[];
+}

@@ -26,7 +26,7 @@ interface PracticeViewProps {
   topics: TopicChapter[];
   initialTopicId?: string;
   onAddXP: (points: number) => void;
-  onRecordQuizResult: (topicId: string, correct: number, total: number) => void;
+  onRecordQuizResult: (topicId: string, correct: number, total: number, topicTitle?: string, xpEarned?: number) => void;
 }
 
 export const PracticeView: React.FC<PracticeViewProps> = ({
@@ -111,7 +111,7 @@ export const PracticeView: React.FC<PracticeViewProps> = ({
         xpEarned: totalXP,
       });
 
-      onRecordQuizResult(currentTopic.id, correctCount, filteredQuestions.length);
+      onRecordQuizResult(currentTopic.id, correctCount, filteredQuestions.length, currentTopic.title, totalXP);
 
       if (correctCount / filteredQuestions.length >= 0.7) {
         confetti({

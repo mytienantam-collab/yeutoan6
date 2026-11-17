@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import { Header } from './components/Header';
 import { HomeHero } from './components/HomeHero';
 import { CurriculumView } from './components/CurriculumView';
@@ -7,7 +8,8 @@ import { GamesView } from './components/GamesView';
 import { AITutorView } from './components/AITutorView';
 import { ParentDashboardView } from './components/ParentDashboardView';
 import { MindmapModal } from './components/MindmapModal';
-import { ActiveTab, UserStats, Badge, TopicChapter } from './types';
+import { StudentProfileModal } from './components/StudentProfileModal';
+import { ActiveTab, UserStats, Badge, TopicChapter, StudentProfile, StudentQuizRecord } from './types';
 import { TOPIC_CHAPTERS } from './data/curriculumData';
 import { BADGES_DATA } from './data/badgesData';
 import { 
@@ -23,7 +25,7 @@ import {
   Award
 } from 'lucide-react';
 
-// Simple Web Audio API sound generator for educational feedback
+// Web Audio API sound feedback
 function playSound(type: 'success' | 'click' | 'levelup') {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -37,8 +39,8 @@ function playSound(type: 'success' | 'click' | 'levelup') {
 
     if (type === 'success') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-      osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.15); // G5
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.15);
       gain.gain.setValueAtTime(0.15, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
       osc.start();
@@ -60,12 +62,123 @@ function playSound(type: 'success' | 'click' | 'levelup') {
       osc.stop(ctx.currentTime + 0.08);
     }
   } catch (e) {
-    // Ignore audio autoplay restrictions
+    // Ignore audio restrictions
   }
 }
 
-const LOCAL_STORAGE_KEY_STATS = 'yeutoan6_stats_v1';
-const LOCAL_STORAGE_KEY_BADGES = 'yeutoan6_badges_v1';
+const LOCAL_STORAGE_KEY_ROSTER = 'yeutoan6_students_roster_v2';
+const LOCAL_STORAGE_KEY_ACTIVE_STUDENT = 'yeutoan6_active_student_id_v2';
+const LOCAL_STORAGE_KEY_HAS_REGISTERED = 'yeutoan6_registered_once_v2';
+
+// Seed default students for immediate roster richness if empty
+const DEFAULT_STUDENTS: StudentProfile[] = [
+  {
+    id: 'st_minh_khang',
+    fullName: 'Nguyễn Minh Khang',
+    className: '6A1',
+    avatar: '🦉',
+    createdAt: '18/09/2026',
+    lastActiveAt: 'Vừa xong',
+    stats: {
+      xp: 420,
+      streakDays: 7,
+      level: 3,
+      completedLessons: ['CH-01-L1', 'CH-01-L2', 'CH-02-L1'],
+      completedQuizzesCount: 16,
+      totalTimeMinutes: 195,
+      accuracyRate: 92,
+      arenaHighScore: 210,
+      mazeCompletedCount: 3,
+      topicProgress: {
+        'so-tu-nhien': { completed: 8, total: 8, accuracy: 94 },
+        'so-nguyen': { completed: 6, total: 7, accuracy: 88 },
+        'hinh-hoc-truc-quan': { completed: 5, total: 6, accuracy: 82 },
+        'phan-so-thong-ke': { completed: 4, total: 7, accuracy: 78 },
+      },
+    },
+    quizHistory: [
+      {
+        id: 'q1',
+        topicId: 'so-tu-nhien',
+        topicTitle: 'Số tự nhiên, Lũy thừa & BCNN/ƯCLN',
+        date: '10:30 18/09/2026',
+        correct: 5,
+        total: 5,
+        accuracy: 100,
+        xpEarned: 75,
+      },
+      {
+        id: 'q2',
+        topicId: 'so-nguyen',
+        topicTitle: 'Số nguyên & Phép cộng trừ số nguyên Z',
+        date: '15:20 22/09/2026',
+        correct: 4,
+        total: 5,
+        accuracy: 80,
+        xpEarned: 60,
+      },
+      {
+        id: 'q3',
+        topicId: 'hinh-hoc-truc-quan',
+        topicTitle: 'Hình học trực quan & Diện tích hình thoi',
+        date: '08:45 28/09/2026',
+        correct: 4,
+        total: 5,
+        accuracy: 80,
+        xpEarned: 55,
+      },
+    ],
+    badges: BADGES_DATA,
+  },
+  {
+    id: 'st_mai_anh',
+    fullName: 'Trần Mai Anh',
+    className: '6A2',
+    avatar: '🚀',
+    createdAt: '05/10/2026',
+    lastActiveAt: 'Hôm qua',
+    stats: {
+      xp: 310,
+      streakDays: 5,
+      level: 3,
+      completedLessons: ['CH-01-L1', 'CH-02-L1'],
+      completedQuizzesCount: 11,
+      totalTimeMinutes: 140,
+      accuracyRate: 85,
+      arenaHighScore: 180,
+      mazeCompletedCount: 2,
+      topicProgress: {
+        'so-tu-nhien': { completed: 7, total: 8, accuracy: 88 },
+        'so-nguyen': { completed: 5, total: 7, accuracy: 82 },
+        'hinh-hoc-truc-quan': { completed: 4, total: 6, accuracy: 78 },
+        'phan-so-thong-ke': { completed: 2, total: 7, accuracy: 70 },
+      },
+    },
+    quizHistory: [
+      {
+        id: 'q4',
+        topicId: 'so-tu-nhien',
+        topicTitle: 'Số tự nhiên, Lũy thừa & BCNN/ƯCLN',
+        date: '14:15 15/10/2026',
+        correct: 4,
+        total: 5,
+        accuracy: 80,
+        xpEarned: 60,
+      },
+      {
+        id: 'q5',
+        topicId: 'phan-so-thong-ke',
+        topicTitle: 'Phân số, Số thập phân & Xác suất',
+        date: '16:00 02/11/2026',
+        correct: 4,
+        total: 5,
+        accuracy: 80,
+        xpEarned: 50,
+      },
+    ],
+    badges: BADGES_DATA,
+  },
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -73,98 +186,235 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [mindmapTopic, setMindmapTopic] = useState<TopicChapter | null>(null);
 
-  // User Stats state with LocalStorage persistence
-  const [stats, setStats] = useState<UserStats>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_STATS);
+  // Student Roster & Active Student State
+  const [savedStudents, setSavedStudents] = useState<StudentProfile[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_ROSTER);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (e) {
         // fallback
       }
     }
-    return {
-      xp: 340,
-      streakDays: 7,
-      level: 3,
-      completedLessons: ['CH-01-L1', 'CH-01-L2', 'CH-02-L1'],
-      completedQuizzesCount: 14,
-      totalTimeMinutes: 185,
-      accuracyRate: 88,
-      arenaHighScore: 190,
-      mazeCompletedCount: 2,
-      topicProgress: {
-        'so-tu-nhien': { completed: 8, total: 8, accuracy: 92 },
-        'so-nguyen': { completed: 6, total: 7, accuracy: 84 },
-        'hinh-hoc-truc-quan': { completed: 4, total: 6, accuracy: 75 },
-        'phan-so-thong-ke': { completed: 3, total: 7, accuracy: 68 },
+    return DEFAULT_STUDENTS;
+  });
+
+  const [activeStudentId, setActiveStudentId] = useState<string>(() => {
+    const savedActive = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_STUDENT);
+    if (savedActive) return savedActive;
+    return 'st_minh_khang';
+  });
+
+  // Modal open on first start or when requested
+  const [studentModalOpen, setStudentModalOpen] = useState<boolean>(() => {
+    const registered = localStorage.getItem(LOCAL_STORAGE_KEY_HAS_REGISTERED);
+    return registered !== 'true';
+  });
+
+  // Active student object helper
+  const activeStudent = savedStudents.find(s => s.id === activeStudentId) || savedStudents[0] || null;
+
+  const stats = activeStudent?.stats || {
+    xp: 340,
+    streakDays: 7,
+    level: 3,
+    completedLessons: ['CH-01-L1', 'CH-01-L2'],
+    completedQuizzesCount: 14,
+    totalTimeMinutes: 185,
+    accuracyRate: 88,
+    arenaHighScore: 190,
+    mazeCompletedCount: 2,
+    topicProgress: {
+      'so-tu-nhien': { completed: 8, total: 8, accuracy: 92 },
+      'so-nguyen': { completed: 6, total: 7, accuracy: 84 },
+      'hinh-hoc-truc-quan': { completed: 4, total: 6, accuracy: 75 },
+      'phan-so-thong-ke': { completed: 3, total: 7, accuracy: 68 },
+    },
+  };
+
+  const badges = activeStudent?.badges || BADGES_DATA;
+
+  // Persist roster and active student
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY_ROSTER, JSON.stringify(savedStudents));
+  }, [savedStudents]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_STUDENT, activeStudentId);
+  }, [activeStudentId]);
+
+  // Handle switching active student
+  const handleSelectStudent = (studentId: string) => {
+    setActiveStudentId(studentId);
+    if (soundEnabled) playSound('click');
+  };
+
+  // Handle creating new student profile
+  const handleCreateStudent = (fullName: string, className: string, avatar: string) => {
+    const newStudentId = `st_${Date.now()}`;
+    const newStudent: StudentProfile = {
+      id: newStudentId,
+      fullName,
+      className,
+      avatar,
+      createdAt: new Date().toLocaleDateString('vi-VN'),
+      lastActiveAt: 'Vừa xong',
+      stats: {
+        xp: 100, // Welcome bonus XP!
+        streakDays: 1,
+        level: 1,
+        completedLessons: [],
+        completedQuizzesCount: 0,
+        totalTimeMinutes: 15,
+        accuracyRate: 100,
+        arenaHighScore: 0,
+        mazeCompletedCount: 0,
+        topicProgress: {
+          'so-tu-nhien': { completed: 0, total: 8, accuracy: 100 },
+          'so-nguyen': { completed: 0, total: 7, accuracy: 100 },
+          'hinh-hoc-truc-quan': { completed: 0, total: 6, accuracy: 100 },
+          'phan-so-thong-ke': { completed: 0, total: 7, accuracy: 100 },
+        },
       },
+      quizHistory: [],
+      badges: BADGES_DATA,
     };
-  });
 
-  const [badges, setBadges] = useState<Badge[]>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_BADGES);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // fallback
+    setSavedStudents(prev => [newStudent, ...prev]);
+    setActiveStudentId(newStudentId);
+    localStorage.setItem(LOCAL_STORAGE_KEY_HAS_REGISTERED, 'true');
+
+    if (soundEnabled) playSound('levelup');
+    confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.6 },
+    });
+  };
+
+  // Handle deleting student profile
+  const handleDeleteStudent = (studentId: string) => {
+    setSavedStudents(prev => {
+      const filtered = prev.filter(s => s.id !== studentId);
+      if (activeStudentId === studentId && filtered.length > 0) {
+        setActiveStudentId(filtered[0].id);
       }
-    }
-    return BADGES_DATA;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY_STATS, JSON.stringify(stats));
-  }, [stats]);
-
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY_BADGES, JSON.stringify(badges));
-  }, [badges]);
+      return filtered;
+    });
+  };
 
   // XP addition handler
   const handleAddXP = (amount: number) => {
     if (soundEnabled) playSound('success');
-    setStats(prev => {
-      const newXP = prev.xp + amount;
-      const newLevel = Math.floor(newXP / 150) + 1;
-      if (newLevel > prev.level && soundEnabled) {
-        playSound('levelup');
-      }
-      return {
-        ...prev,
-        xp: newXP,
-        level: newLevel,
-      };
-    });
+    setSavedStudents(prev =>
+      prev.map(st => {
+        if (st.id === activeStudentId) {
+          const newXP = st.stats.xp + amount;
+          const newLevel = Math.floor(newXP / 150) + 1;
+          if (newLevel > st.stats.level && soundEnabled) {
+            playSound('levelup');
+          }
+          return {
+            ...st,
+            lastActiveAt: 'Vừa xong',
+            stats: {
+              ...st.stats,
+              xp: newXP,
+              level: newLevel,
+            },
+          };
+        }
+        return st;
+      })
+    );
   };
 
   // Badge unlock handler
   const handleUnlockBadge = (badgeId: string) => {
-    setBadges(prev =>
-      prev.map(b => (b.id === badgeId ? { ...b, unlocked: true, unlockedAt: 'Vừa đạt được' } : b))
+    setSavedStudents(prev =>
+      prev.map(st => {
+        if (st.id === activeStudentId) {
+          const updatedBadges = st.badges.map(b =>
+            b.id === badgeId ? { ...b, unlocked: true, unlockedAt: 'Vừa đạt được' } : b
+          );
+          return {
+            ...st,
+            badges: updatedBadges,
+          };
+        }
+        return st;
+      })
     );
   };
 
-  // Record quiz result
-  const handleRecordQuizResult = (topicId: string, correct: number, total: number) => {
-    setStats(prev => {
-      const existing = prev.topicProgress[topicId] || { completed: 0, total, accuracy: 80 };
-      const newAcc = Math.round(((existing.accuracy + Math.round((correct / total) * 100)) / 2));
-      return {
-        ...prev,
-        completedQuizzesCount: prev.completedQuizzesCount + 1,
-        totalTimeMinutes: prev.totalTimeMinutes + 12,
-        topicProgress: {
-          ...prev.topicProgress,
-          [topicId]: {
-            ...existing,
-            accuracy: newAcc,
-            completed: Math.min(existing.total, existing.completed + 1),
-          },
-        },
-      };
+  // Record quiz result into active student's history & stats
+  const handleRecordQuizResult = (
+    topicId: string, 
+    correct: number, 
+    total: number, 
+    topicTitle?: string, 
+    xpEarned?: number
+  ) => {
+    const accuracy = Math.round((correct / total) * 100);
+    const earnedXP = xpEarned !== undefined ? xpEarned : (correct * 15);
+
+    const nowFormatted = new Date().toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
     });
+
+    const newQuizRecord: StudentQuizRecord = {
+      id: `quiz_${Date.now()}`,
+      topicId,
+      topicTitle: topicTitle || topicId,
+      date: nowFormatted,
+      correct,
+      total,
+      accuracy,
+      xpEarned: earnedXP,
+    };
+
+    setSavedStudents(prev =>
+      prev.map(st => {
+        if (st.id === activeStudentId) {
+          const existingTopic = st.stats.topicProgress[topicId] || { completed: 0, total, accuracy: 80 };
+          const newTopicAcc = Math.round((existingTopic.accuracy + accuracy) / 2);
+
+          const existingHistory = st.quizHistory || [];
+          const updatedHistory = [newQuizRecord, ...existingHistory];
+
+          // Recompute overall accuracy rate
+          const avgAcc = Math.round(
+            updatedHistory.reduce((acc, curr) => acc + curr.accuracy, 0) / updatedHistory.length
+          );
+
+          return {
+            ...st,
+            lastActiveAt: 'Vừa xong',
+            quizHistory: updatedHistory,
+            stats: {
+              ...st.stats,
+              completedQuizzesCount: st.stats.completedQuizzesCount + 1,
+              totalTimeMinutes: st.stats.totalTimeMinutes + 12,
+              accuracyRate: avgAcc,
+              topicProgress: {
+                ...st.stats.topicProgress,
+                [topicId]: {
+                  ...existingTopic,
+                  accuracy: newTopicAcc,
+                  completed: Math.min(existingTopic.total, existingTopic.completed + 1),
+                },
+              },
+            },
+          };
+        }
+        return st;
+      })
+    );
   };
 
   const handleNavigate = (tab: ActiveTab, topicId?: string) => {
@@ -196,6 +446,8 @@ export default function App() {
           setSelectedTopicId(topicId);
           setActiveTab('curriculum');
         }}
+        activeStudent={activeStudent}
+        onOpenStudentModal={() => setStudentModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -253,9 +505,27 @@ export default function App() {
             stats={stats}
             topics={TOPIC_CHAPTERS}
             onNavigateToTopic={(topicId) => handleNavigate('curriculum', topicId)}
+            savedStudents={savedStudents}
+            activeStudentId={activeStudentId}
+            onSelectStudent={handleSelectStudent}
+            onDeleteStudent={handleDeleteStudent}
+            onOpenStudentModal={() => setStudentModalOpen(true)}
           />
         )}
       </main>
+
+      {/* Student Profile & Registration Modal */}
+      <StudentProfileModal
+        isOpen={studentModalOpen}
+        onClose={() => {
+          localStorage.setItem(LOCAL_STORAGE_KEY_HAS_REGISTERED, 'true');
+          setStudentModalOpen(false);
+        }}
+        activeStudent={activeStudent}
+        savedStudents={savedStudents}
+        onSelectStudent={handleSelectStudent}
+        onCreateStudent={handleCreateStudent}
+      />
 
       {/* Mindmap Modal */}
       {mindmapTopic && (
